@@ -8,15 +8,17 @@
 $hardcode_api_key = "YOUR_API_KEY"; 
 
 class SteamRequest {
-
 	private $api_key;
 
 
 
+	function __construct($set_api_key) {
+		$this->api_key = $set_api_key;
+	}
+
 	function __construct() {
 		$this->api_key = $hardcode_api_key;
 	}
-
 }
 
 class SteamUser {
@@ -38,6 +40,27 @@ class SteamGame {
 	public $name;
 	public $price_usd;
 	public $playing_right_now;
+
+	function __construct($json) {
+		// todo
+	}
+}
+
+class SteamStatus {
+	public $logon_service;
+	public $steam_community;
+
+	function __construct($json) {
+		// todo
+	}
+}
+
+class CStrikeStatus {
+	public $mm_status;
+	public $online_players;
+	public $online_servers;
+	public $searching_game;
+	public $average_wait_seconds;
 
 	function __construct($json) {
 		// todo
