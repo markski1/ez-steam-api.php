@@ -1,15 +1,23 @@
 <?php
 
-class SteamRequest {
+class SteamRequest
+{
 	private $api_key;
 
 
-	function __construct($set_api_key) {
+	function __construct($set_api_key)
+	{
 		$this->api_key = $set_api_key;
 	}
 
-	
-	function ResolveProfileURL($url) {
+
+	/**
+	 * Given a URL to a steam profile, returns a SteamID, or false if there's an error.
+	 * @param string $url
+	 * @return string|bool
+	 */
+	function ResolveProfileURL($url)
+	{
 		// first check if it's a vanity URL.
 		$find = strpos($url, "/id/");
 
@@ -48,8 +56,14 @@ class SteamRequest {
 		return $this->ResolveVanityName($vanityName);
 	}
 
-	function ResolveVanityName($vanityName) {
-		$result = json_decode(file_get_contents("https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/?key=".$this->api_key."&vanityurl=".$vanityName));
+	/**
+	 * Given a profile vanity name, returns a SteamID, or false if there's an error.
+	 * @param string $vanityName
+	 * @return string|bool
+	 */
+	function ResolveVanityName($vanityName)
+	{
+		$result = json_decode(file_get_contents("https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/?key=" . $this->api_key . "&vanityurl=" . $vanityName));
 
 		$response = $result->response;
 
@@ -60,9 +74,15 @@ class SteamRequest {
 		return $response->steamid;
 	}
 
-	function GetSteamUser($SteamID) {
-		$result = json_decode(file_get_contents("http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=".$this->api_key."&steamids=".$SteamID));
-		
+	/**
+	 * Given a SteamID, returns a 'SteamUser' object with user information, or 'false' if there's an error.
+	 * @param mixed $SteamID
+	 * @return SteamUser|bool
+	 */
+	function GetSteamUser($SteamID)
+	{
+		$result = json_decode(file_get_contents("http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=" . $this->api_key . "&steamids=" . $SteamID));
+
 		$response = $result->response;
 
 		if (sizeof($response->players) != 1) {
@@ -72,7 +92,13 @@ class SteamRequest {
 		return new SteamUser($response->players[0]);
 	}
 
-	function GetSteamAppByURL($url) {
+	/**
+	 * Given a URL to a steam application, returns a 'SteamApp' object with app information, or 'false' if there's an error.
+	 * @param string $url
+	 * @return SteamApp|bool
+	 */
+	function GetSteamAppByURL($url)
+	{
 		$find = strpos($url, "/app/");
 
 		if (!$find) {
@@ -84,10 +110,16 @@ class SteamRequest {
 		return $this->GetSteamApp($appid);
 	}
 
-	function GetSteamApp($AppID) {
+	/**
+	 * Given an appid, returns a 'SteamApp' object with app information, or 'false' if there's an error.
+	 * @param string|int $AppID
+	 * @return SteamApp|bool
+	 */
+	function GetSteamApp($AppID)
+	{
 		throw new Exception('GetSteamApp is not yet implemented.');
 
-		$result = json_decode(file_get_contents("https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid=".$AppID));
+		$result = json_decode(file_get_contents("https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid=" . $AppID));
 
 		$response = $result->response;
 
@@ -98,8 +130,13 @@ class SteamRequest {
 		return new SteamApp($response);
 	}
 
-	function GetCSGOStatus() {
-		$result = json_decode(file_get_contents("https://api.steampowered.com/ICSGOServers_730/GetGameServersStatus/v1/?key=".$this->api_key));
+	/**
+	 * Returns a 'CStrikeStatus' object with information about Counter-Strike's status.
+	 * @return CStrikeStatus
+	 */
+	function GetCSGOStatus()
+	{
+		$result = json_decode(file_get_contents("https://api.steampowered.com/ICSGOServers_730/GetGameServersStatus/v1/?key=" . $this->api_key));
 
 		$response = $result->result;
 
@@ -107,7 +144,8 @@ class SteamRequest {
 	}
 }
 
-class SteamUser {
+class SteamUser
+{
 	public $steamid;
 	public $name;
 	public $profile_url = false;
@@ -121,11 +159,12 @@ class SteamUser {
 	public $playing_game = false;
 	public $server_ip = false;
 
-	function __construct($userData) {
+	function __construct($userData)
+	{
 		$this->steamid = $userData->steamid;
 		$this->name = $userData->personaname;
 		$this->profile_visibility = $userData->communityvisibilitystate;
-		
+
 		if (isset($userData->avatarfull))
 			$this->avatar_url = $userData->avatarfull;
 
@@ -134,19 +173,19 @@ class SteamUser {
 
 		if (isset($userData->realname))
 			$this->real_name = $userData->realname;
-		
+
 		if (isset($userData->personastate))
 			$this->status = $userData->personastate;
 
 		if (isset($userData->lastlogoff))
 			$this->last_seen_unix = $userData->lastlogoff;
-		
+
 		if (isset($userData->timecreated))
 			$this->account_created_unix = $userData->timecreated;
 
 		if (isset($userData->gameextrainfo))
 			$this->playing_game = $userData->gameextrainfo;
-		
+
 		if (isset($userData->gameserverip))
 			$this->server_ip = $userData->gameserverip;
 
@@ -154,18 +193,26 @@ class SteamUser {
 			$this->profile_url = $userData->profileurl;
 	}
 
-	function GetProfileVisibility() {
+	/**
+	 * Returns wether the user's profile is 'Public' or 'Private'.
+	 * @return string
+	 */
+	function GetProfileVisibility()
+	{
 		if ($this->profile_visibility == 3) {
 			return "Public";
-		}
-		else {
+		} else {
 			return "Private";
 		}
 	}
 
-	function GetUserStatus() {
-		switch ($this->status)
-		{
+	/**
+	 * Returns the current status of the user.
+	 * @return string
+	 */
+	function GetUserStatus()
+	{
+		switch ($this->status) {
 			case 0:
 				return "Offline (or private)";
 			case 1:
@@ -185,50 +232,73 @@ class SteamUser {
 		}
 	}
 
-	function GetUserGame() {
+	/**
+	 * Returns the name of the game being played by the user, if any.
+	 * @return string
+	 */
+	function GetUserGame()
+	{
 		if ($this->playing_game) {
 			return $this->playing_game;
 		}
-		
+
 		return "Not playing";
 	}
 
-	function GetUserServerIP() {
+	/**
+	 * Returns the IP of the server where the user is playing, if any. Only works for SteamWorks games.
+	 * @return string
+	 */
+	function GetUserServerIP()
+	{
 		if ($this->server_ip) {
 			return $this->server_ip;
 		}
-		
+
 		return "Not playing any SteamWorks game match.";
 	}
 
-	function GetLastSeen() {
+	/**
+	 * Returns a text-formatted date of the last time this user was seen online.
+	 * @return string
+	 */
+	function GetLastSeen()
+	{
 		if ($this->last_seen_unix) {
 			return date("F j, Y, g:i a", $this->last_seen_unix);
 		}
-		
+
 		return "Unknown";
 	}
 
-	function GetCreationDate() {
+	/**
+	 * Returns a text-formatted date of when this user's account was created.
+	 * @return string
+	 */
+	function GetCreationDate()
+	{
 		if ($this->account_created_unix) {
 			return date("F j, Y, g:i a", $this->account_created_unix);
 		}
-		
+
 		return "Unknown";
 	}
 }
 
-class SteamApp {
+class SteamApp
+{
 	public $name;
 	public $price_usd;
 	public $playing_right_now;
 
-	function __construct($json) {
+	function __construct($json)
+	{
 		// todo
 	}
 }
 
-class CStrikeStatus {
+class CStrikeStatus
+{
 	public $mm_status;
 	public $online_players;
 	public $online_servers;
@@ -238,7 +308,8 @@ class CStrikeStatus {
 	public $pworld_status;
 	public $services;
 
-	function __construct($data) {
+	function __construct($data)
+	{
 		$this->mm_status = $data->matchmaking->scheduler;
 
 		$this->online_players = $data->matchmaking->online_players;
@@ -248,19 +319,26 @@ class CStrikeStatus {
 		$this->searching_players = $data->matchmaking->searching_players;
 
 		$this->average_wait_seconds = $data->matchmaking->search_seconds_avg;
-	
+
 		// this looks stupid, and it kinda is, but it quickly, properly and recursively converts stdClass into an array.
 		$this->datacenters = json_decode(json_encode($data->datacenters), true);
 
 		$this->pworld_status = $data->perfectworld->logon->availability;
-	
+
 		$this->services = $data->services;
 	}
 
-	function GetDatacenterStatus($DCName) {
+	/**
+	 * Returns an array for the given datacenter name which includes 'capacity' and 'load'. Returns 'false' if the DC is not found.
+	 * @param mixed $DCName
+	 * @return array|bool
+	 */
+	function GetDatacenterStatus($DCName)
+	{
 		$check = array_key_exists($DCName, $this->datacenters);
 
-		if (!$check) return false;
+		if (!$check)
+			return false;
 
 		return $this->datacenters[$DCName];
 	}
