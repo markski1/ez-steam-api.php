@@ -22,14 +22,41 @@ class SteamRequest {
 	}
 
 	
-	function ResolveVanityURL($url) {
+	function ResolveProfileURL($url) {
+		// first check if it's a vanity URL.
 		$find = strpos($url, "/id/");
 
 		if (!$find) {
-			return false;
+			// if not, then check for id url
+			$find = strpos($url, "/profiles/");
+
+			// if it isn't, fail.
+			if (!$find) {
+				return false;
+			}
+
+			// else, just extract it.
+			$SteamID = substr($url, $find + 10);
+
+			// if there's more URL left, remove it.
+			$find = strpos($SteamID, "/");
+
+			if ($find) {
+				$SteamID = substr($SteamID, 0, $find);
+			}
+
+			return $SteamID;
 		}
 
+		// if a vanity url, then extract the name part and proceed to resolve it.
 		$vanityName = substr($url, $find + 4);
+
+		// if there's more URL left, remove it.
+		$find = strpos($vanityName, "/");
+
+		if ($find) {
+			$vanityName = substr($vanityName, 0, $find);
+		}
 
 		return $this->ResolveVanityName($vanityName);
 	}
@@ -57,13 +84,40 @@ class SteamRequest {
 
 		return new SteamUser($response->players[0]);
 	}
+
+	function GetSteamAppByURL($url) {
+		$find = strpos($url, "/app/");
+
+		if (!$find) {
+			return false;
+		}
+
+		$appid = substr($url, $find + 5);
+
+		return $this->GetSteamApp($appid);
+	}
+
+	function GetSteamApp($AppID) {
+		$result = json_decode(file_get_contents("https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid=".$AppID));
+
+		$response = $result->response;
+
+		if ($response->result != 1) {
+			return false;
+		}
+
+		return new SteamApp($response);
+	}
 }
 
 class SteamUser {
 	public $steamid;
 	public $name;
+	public $profile_url = false;
+	public $real_name = false;
 	public $profile_visibility = false;
 	public $avatar_url = false;
+	public $avatar_hash = false;
 	public $last_seen_unix = false;
 	public $account_created_unix = false;
 	public $status = false;
@@ -77,6 +131,12 @@ class SteamUser {
 		
 		if (isset($userData->avatarfull))
 			$this->avatar_url = $userData->avatarfull;
+
+		if (isset($userData->avatarhash))
+			$this->avatar_hash = $userData->avatarhash;
+
+		if (isset($userData->realname))
+			$this->real_name = $userData->realname;
 		
 		if (isset($userData->personastate))
 			$this->status = $userData->personastate;
@@ -92,6 +152,9 @@ class SteamUser {
 		
 		if (isset($userData->gameserverip))
 			$this->server_ip = $userData->gameserverip;
+
+		if (isset($userData->profileurl))
+			$this->profile_url = $userData->profileurl;
 	}
 
 	function GetProfileVisibility() {
@@ -158,7 +221,7 @@ class SteamUser {
 	}
 }
 
-class SteamGame {
+class SteamApp {
 	public $name;
 	public $price_usd;
 	public $playing_right_now;
