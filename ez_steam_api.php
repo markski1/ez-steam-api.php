@@ -1,24 +1,11 @@
 <?php
 
-// grab your API key at http://steamcommunity.com/dev/apikey
-
-// you may use this if you wish to always use the same api key,
-// otherwise you'll have to specify it whenever you instantiate a SteamRequest object.
-
-$GLOBALS["hardcode_api_key"] = "YOUR_API_KEY"; 
-
 class SteamRequest {
 	private $api_key;
 
 
-	function __construct($set_api_key = "0") {
-		if ($set_api_key == "0") {
-			$this->api_key = $GLOBALS["hardcode_api_key"];
-		}
-		else
-		{
-			$this->api_key = $set_api_key;
-		}
+	function __construct($set_api_key) {
+		$this->api_key = $set_api_key;
 	}
 
 	
@@ -98,6 +85,8 @@ class SteamRequest {
 	}
 
 	function GetSteamApp($AppID) {
+		throw new Exception('GetSteamApp is not yet implemented.');
+
 		$result = json_decode(file_get_contents("https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid=".$AppID));
 
 		$response = $result->response;
@@ -107,6 +96,14 @@ class SteamRequest {
 		}
 
 		return new SteamApp($response);
+	}
+
+	function GetCSGOStatus() {
+		$result = json_decode(file_get_contents("https://api.steampowered.com/ICSGOServers_730/GetGameServersStatus/v1/?key=".$this->api_key));
+
+		$response = $result->result;
+
+		return new CStrikeStatus($response);
 	}
 }
 
@@ -231,24 +228,41 @@ class SteamApp {
 	}
 }
 
-class SteamStatus {
-	public $logon_service;
-	public $steam_community;
-
-	function __construct($json) {
-		// todo
-	}
-}
-
 class CStrikeStatus {
 	public $mm_status;
 	public $online_players;
 	public $online_servers;
-	public $searching_game;
+	public $searching_players;
 	public $average_wait_seconds;
+	public $datacenters;
+	public $pworld_status;
+	public $services;
 
-	function __construct($json) {
-		// todo
+	function __construct($data) {
+		$this->mm_status = $data->matchmaking->scheduler;
+
+		$this->online_players = $data->matchmaking->online_players;
+
+		$this->online_servers = $data->matchmaking->online_servers;
+
+		$this->searching_players = $data->matchmaking->searching_players;
+
+		$this->average_wait_seconds = $data->matchmaking->search_seconds_avg;
+	
+		// this looks stupid, and it kinda is, but it quickly, properly and recursively converts stdClass into an array.
+		$this->datacenters = json_decode(json_encode($data->datacenters), true);
+
+		$this->pworld_status = $data->perfectworld->logon->availability;
+	
+		$this->services = $data->services;
+	}
+
+	function GetDatacenterStatus($DCName) {
+		$check = array_key_exists($DCName, $this->datacenters);
+
+		if (!$check) return false;
+
+		return $this->datacenters[$DCName];
 	}
 }
 
