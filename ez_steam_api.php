@@ -2,8 +2,8 @@
 
 class SteamRequest
 {
+	// Will contain the API key to make requests from this object. MUST BE SECRET.
 	private $api_key;
-
 
 	function __construct($set_api_key)
 	{
@@ -75,8 +75,19 @@ class SteamRequest
 	}
 
 	/**
+	 * Given a URL to a steam profile, returns a 'SteamUser' object with user information, or 'false' if there's an error.
+	 * @param string $url
+	 * @return SteamUser|bool
+	 */
+	function GetSteamUserByURL($url) {
+		$SteamID = $this->ResolveProfileURL($url);
+
+		return $this->GetSteamUser($SteamID);
+	}
+
+	/**
 	 * Given a SteamID, returns a 'SteamUser' object with user information, or 'false' if there's an error.
-	 * @param mixed $SteamID
+	 * @param string $SteamID
 	 * @return SteamUser|bool
 	 */
 	function GetSteamUser($SteamID)
@@ -134,7 +145,7 @@ class SteamRequest
 	 * Returns a 'CStrikeStatus' object with information about Counter-Strike's status.
 	 * @return CStrikeStatus
 	 */
-	function GetCSGOStatus()
+	function GetCStrikeStatus()
 	{
 		$result = json_decode(file_get_contents("https://api.steampowered.com/ICSGOServers_730/GetGameServersStatus/v1/?key=" . $this->api_key));
 
@@ -146,16 +157,60 @@ class SteamRequest
 
 class SteamUser
 {
+	/**
+	 * Steam ID of the user.
+	 * @var string
+	 */
 	public $steamid;
+	/**
+	 * Public name of the user
+	 * @var string
+	 */
 	public $name;
-	public $profile_url = false;
+	/**
+	 * Real name of the user, if available.
+	 * @var string|bool
+	 */
 	public $real_name = false;
+	/**
+	 * Profile URL for this user, if available.
+	 * @var string|bool
+	 */
+	public $profile_url = false;
+	/**
+	 * Profile visibility value. DO NOT USE. Use GetProfileVisibility() instead.
+	 * @var int|bool
+	 */
 	public $profile_visibility = false;
+	/**
+	 * URL to the user's avatar, if available.
+	 * @var string|bool
+	 */
 	public $avatar_url = false;
+	/**
+	 * Hash of the user's avatar, if available.
+	 * @var string|bool
+	 */
 	public $avatar_hash = false;
+	/**
+	 * UNIX timestamp of the user's last seen time, if available. Use GetLastSeen() for a formatted return.
+	 * @var int|bool
+	 */
 	public $last_seen_unix = false;
+	/**
+	 * UNIX timestamp of the user's creation date, if available. Use GetCreationDate() for a formatted return.
+	 * @var int|bool
+	 */
 	public $account_created_unix = false;
+	/**
+	 * Integer value of the user's status. Not recommended, use GetUserStatus() instead.
+	 * @var int|bool
+	 */
 	public $status = false;
+	/**
+	 * Game the user is playing. Not recommended, use GetUserGame() instead.
+	 * @var int|bool
+	 */
 	public $playing_game = false;
 	public $server_ip = false;
 
@@ -299,11 +354,35 @@ class SteamApp
 
 class CStrikeStatus
 {
+	/**
+	 * matchmaking status
+	 * @var string
+	 */
 	public $mm_status;
+	/**
+	 * Players currently online in official CS.
+	 * @var int
+	 */
 	public $online_players;
+	/**
+	 * Number of online CS servers.
+	 * @var int
+	 */
 	public $online_servers;
+	/**
+	 * Number of players searching for game
+	 * @var int
+	 */
 	public $searching_players;
+	/**
+	 * Average time, in seconds, to find a match
+	 * @var int
+	 */
 	public $average_wait_seconds;
+	/**
+	 * Array containing load and capacity of every datacenter, keyed by location name.
+	 * @var array
+	 */
 	public $datacenters;
 	public $pworld_status;
 	public $services;
@@ -330,7 +409,7 @@ class CStrikeStatus
 
 	/**
 	 * Returns an array for the given datacenter name which includes 'capacity' and 'load'. Returns 'false' if the DC is not found.
-	 * @param mixed $DCName
+	 * @param string $DCName
 	 * @return array|bool
 	 */
 	function GetDatacenterStatus($DCName)
@@ -341,6 +420,14 @@ class CStrikeStatus
 			return false;
 
 		return $this->datacenters[$DCName];
+	}
+
+	/**
+	 * Return a text-formatted time, in minutes and seconds, of the average wait time to find a match.
+	 * @return string
+	 */
+	function GetAverageWaitTime() {
+		return date('i:s', $this->average_wait_seconds);
 	}
 }
 
