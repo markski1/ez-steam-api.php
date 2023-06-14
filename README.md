@@ -1,11 +1,14 @@
-# EZ-Steam-API-PHP
-Easy steam api interface in PHP.
+# ez-steam-api.php
+Simple, easy-to-use Steam API interface in PHP. 
+
+***This is still a work in progress. TODO below.***
 
 ## Setup
 
 Simply include the file into your script.
 
-To make requests, you must create a SteamRequest object with your Steam API key.
+You must create a SteamRequest object with your Steam API key as parameter.
+All requests will be made through this object.
 
 ```php
 require 'ez_steam_api.php';
@@ -34,6 +37,8 @@ $csStatus = $steam->GetCStrikeStatus();
 
 Information is returned in the shape of Objects. For now these are SteamUser objects for User information, and CStrikeStatus objects for CS status information.
 
+Please refer to the 'Important notes' section at the end of this document before using this in production.
+
 Most methods are documented through PHPDoc and you may just look at the suggestions when invocating these objects about what they can do. However, here's a quick summary:
 
 #### SteamUser
@@ -59,7 +64,7 @@ For example:
 $userData = $steam->GetSteamUserByURL("https://steamcommunity.com/id/Markski/");
 
 echo $userData->avatar_url;
-// https://avatars.steamstatic.com/b7e10cbaaf0d6e428ee57a1c4bd91dee40681a72_full.jpg
+// "https://avatars.steamstatic.com/b7e10cbaaf0d6e428ee57a1c4bd91dee40681a72_full.jpg"
 ```
 
 The following methods return properly formatted data:
@@ -77,17 +82,11 @@ For example:
 $userData = $steam->GetSteamUserByURL("https://steamcommunity.com/id/Markski/");
 
 echo $userData->GetCreationDate();
-// March 18, 2012, 5:18 am
+// "March 18, 2012, 5:18 am"
 
 echo $userData->GetUserStatus();
-// Online
+// "Online"
 ```
-
-It is recommended to use the formatted methods that exist instead of their raw counterparts.
-
-For example, use `GetUserGame()` instead of getting `playing_game` directly, as it'll automatically handle returning 'Not playing' if the user is not playing any game.
-
-Likewise, `status` will return an integer value, while `GetUserStatus()` will return a proper text value such as 'Online' or 'Busy'.
 
 #### CStrikeStatus
 
@@ -132,6 +131,15 @@ $dcStatus = $csStatus->GetDatacenterStatus("Peru");
 echo $dcStatus['load'];
 // "medium"
 ```
+
+
+#### Important notes.
+
+It is recommended to use the formatted methods that exist instead of their raw counterparts. Raw values will usually be in the shape of an arbitrary number or might be invalid in a way your script cannot handle. The methods provided take care of converting data into a usable shape, or returning `false` in case of failure. 
+
+For example, in the case of SteamUser objects, use `GetUserGame()` instead of getting `playing_game` directly, as it'll automatically handle returning 'Not playing' if the user is not playing any game. Likewise, `status` will return an integer value, while `GetUserStatus()` will return a proper text value such as 'Online' or 'Busy'.
+
+Also: The information within objects returned by this interface is fetched and cached at the instant the request is made. You cannot indefinitely use the same object to get up-to-date information.
 
 ## TODO
 
