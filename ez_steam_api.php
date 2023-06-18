@@ -1,5 +1,15 @@
 <?php
 
+/*
+ / ez_steam_api.php v0.3 by Markski
+ /
+ / For updates and documentation: github.com/markski1/ez-Steam-API-PHP
+ /
+ / For contact: me@markski.ar
+ / Website: markski.ar
+ /
+*/
+
 class SteamRequest
 {
 	// Will contain the API key to make requests from this object. MUST BE SECRET.
@@ -118,6 +128,13 @@ class SteamRequest
 
 		$appid = substr($url, $find + 5);
 
+		// if there's more URL left, remove it.
+		$find = strpos($appid, "/");
+
+		if ($find) {
+			$appid = substr($appid, 0, $find);
+		}
+
 		return $this->GetSteamApp($appid);
 	}
 
@@ -128,17 +145,15 @@ class SteamRequest
 	 */
 	function GetSteamApp($AppID)
 	{
-		throw new Exception('GetSteamApp is not yet implemented.');
+		$result = json_decode(file_get_contents("https://store.steampowered.com/api/appdetails?appids=" . $AppID));
 
-		$result = json_decode(file_get_contents("https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid=" . $AppID));
+		$response = $result->{$AppID};
 
-		$response = $result->response;
-
-		if ($response->result != 1) {
+		if ($response->success == false) {
 			return false;
 		}
 
-		return new SteamApp($response);
+		return new SteamApp($response->data);
 	}
 
 	/**
@@ -206,6 +221,11 @@ class SteamUser
 	 * Integer value of the user's status. Not recommended, use GetUserStatus() instead.
 	 * @var int|bool
 	 */
+	public $previous_names = false;
+	/**
+	 * Numbered array containing previous names. Subkeys: 'newname' is a string of the name, 'timechanged' is the date and time it was set.
+	 * @var array|bool
+	 */
 	public $status = false;
 	/**
 	 * Game the user is playing. Not recommended, use GetUserGame() instead.
@@ -246,6 +266,9 @@ class SteamUser
 
 		if (isset($userData->profileurl))
 			$this->profile_url = $userData->profileurl;
+
+		if ($this->profile_url != false)
+			$this->previous_names = json_decode(file_get_contents($this->profile_url . "/ajaxaliases/"), true);
 	}
 
 	/**
@@ -342,13 +365,107 @@ class SteamUser
 
 class SteamApp
 {
+	/**
+	 * Application ID
+	 * @var int
+	 */
+	public $appid;
+	/**
+	 * Application name
+	 * @var string
+	 */
 	public $name;
-	public $price_usd;
+	/**
+	 * Is the game free to play or not
+	 * @var bool
+	 */
+	public $free_to_play;
+	/**
+	 * How many players are playing right now. 0 if failed to fetch or game is unreleased.
+	 * @var int
+	 */
 	public $playing_right_now;
+	/**
+	 * Level of controller support, from 'none' to 'full'
+	 * @var string
+	 */
+	public $controller_support;
+	/**
+	 * A long, detailed description of the game.
+	 * @var string
+	 */
+	public $detailed_description;
+	/**
+	 * A short description of the game.
+	 * @var string
+	 */
+	public $short_description;
+	/**
+	 * A comma separated list of languages supported by the application.
+	 * @var string
+	 */
+	public $language_list; 
+	/**
+	 * A numbered array containing the categories of this application. Subkeys: 'id' is an integer, 'description' is the name of the category in string form.
+	 * @var array
+	 */
+	public $categories; 
+	/**
+	 * A numbered array containing the genres of this application. Subkeys: 'id' is an integer, 'description' is the name of the genre in string form.
+	 * @var array
+	 */
+	public $genres; 
+	/**
+	 * Amount of achievements in the application, if any.
+	 * @var int
+	 */
+	public $achievement_count; 
+	/**
+	 * A numbered array containing the name of the application developer/s
+	 * @var array
+	 */
+	public $developers; 
+	/**
+	 *  A numbered array containing the name of the application publisher/s
+	 * @var array
+	 */
+	public $publishers; 
+	/**
+	 * Is the game coming soon?
+	 * @var bool
+	 */
+	public $coming_soon; 
+	/**
+	 * A release date for the application, might be past or future (check the 'coming_soon' value).
+	* @var string
+	*/
+	public $release_date; 
 
-	function __construct($json)
+	function __construct($appData)
 	{
-		// todo
+		$this->appid = $appData->steam_appid;
+		$this->name = $appData->name;
+		$this->free_to_play = $appData->is_free;
+		$this->controller_support = $appData->controller_support;
+		$this->detailed_description = $appData->detailed_description;
+		$this->short_description = $appData->short_description;
+		$this->language_list = $appData->supported_languages;
+		$this->categories = json_decode(json_encode($appData->categories), true);
+		$this->genres = json_decode(json_encode($appData->genres), true);
+		$this->achievement_count = $appData->achievements->total;
+		$this->developers = json_decode(json_encode($appData->developers), true);
+		$this->publishers = json_decode(json_encode($appData->publishers), true);
+		$this->coming_soon = $appData->release_date->coming_soon;
+		$this->release_date = $appData->release_date->date;
+
+		$fetch_current_players = json_decode(file_get_contents("https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid=" . $this->appid));
+
+		if ($fetch_current_players->response->result != 1) {
+			$this->playing_right_now = 0;
+		}
+		else {
+			$this->playing_right_now = $fetch_current_players->response->player_count;
+		}
 	}
 }
 
